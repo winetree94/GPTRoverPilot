@@ -1,3 +1,5 @@
+# GPTRover Pilot
+
 Activate Environment
 
 플랫폼
@@ -5,26 +7,6 @@ Activate Environment
 셸
 
 가상 환경을 활성화하는 명령
-
-POSIX - bash/zsh
-```
-$ source <venv>/bin/activate
-```
-
-fish
-```
-$ source <venv>/bin/activate.fish
-```
-
-csh/tcsh
-```
-$ source <venv>/bin/activate.csh
-```
-
-PowerShell
-```
-$ <venv>/bin/Activate.ps1
-```
 
 Install Packages
 ```
