@@ -74,9 +74,9 @@ def select_audio_device():
     device_id = input("Enter the ID of the audio input device you want to use: ")
     return int(device_id)
             
-# list_audio_devices()
-# selected_device = select_audio_device()
-# print("You selected device with ID: ", selected_device)
+list_audio_devices()
+selected_device = select_audio_device()
+print("You selected device with ID: ", selected_device)
 
 def ChatGPT(query):
     user_query = [
@@ -158,7 +158,7 @@ def wake_word():
 
     porcupine_audio_stream = wake_pa.open(
                     rate=porcupine.sample_rate,
-                    input_device_index=1,
+                    input_device_index=selected_device,
                     channels=1,
                     format=pyaudio.paInt16,
                     input=True,
