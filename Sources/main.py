@@ -28,6 +28,8 @@ from pvrecorder import PvRecorder
 from threading import Thread, Event
 from time import sleep
 
+
+
 audio_stream = None
 cobra = None
 pa = None
@@ -59,6 +61,22 @@ prompt = [
 chat_log=[
     {"role": "system", "content": "Your name is DaVinci. You are a helpful assistant. If asked about yourself, you include your name in your response."},
     ]
+
+def list_audio_devices():
+    p = pyaudio.PyAudio()
+    info = p.get_host_api_info_by_index(0)
+    numdevices = info.get('deviceCount')
+    for i in range(0, numdevices):
+        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+            print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+
+def select_audio_device():
+    device_id = input("Enter the ID of the audio input device you want to use: ")
+    return int(device_id)
+            
+list_audio_devices()
+selected_device = select_audio_device()
+print("You selected device with ID: ", selected_device)
 
 def ChatGPT(query):
     user_query = [
@@ -128,7 +146,7 @@ def wake_word():
     keywords = ["computer", "jarvis", "americano"]
     porcupine = pvporcupine.create(keywords=keywords,
                             access_key=pv_access_key,
-                            sensitivities=[0.1, 0.1, 0.1], #from 0 to 1.0 - a higher number reduces the miss rate at the cost of increased false alarms
+                            sensitivities=[1, 1, 1], #from 0 to 1.0 - a higher number reduces the miss rate at the cost of increased false alarms
                                    )
     devnull = os.open(os.devnull, os.O_WRONLY)
     old_stderr = os.dup(2)
@@ -140,6 +158,7 @@ def wake_word():
 
     porcupine_audio_stream = wake_pa.open(
                     rate=porcupine.sample_rate,
+                    input_device_index=selected_device,
                     channels=1,
                     format=pyaudio.paInt16,
                     input=True,
