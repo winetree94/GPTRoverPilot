@@ -44,7 +44,6 @@ PyAudio==0.2.14
 pydantic==2.5.3
 pydantic_core==2.14.6
 pygame==2.5.2
-pypiwin32==223
 pyproject_hooks==1.0.0
 python-dateutil==2.8.2
 python-dotenv==1.0.0
