@@ -1,6 +1,7 @@
 # the following program is provided by DevMiser - https://github.com/DevMiser
 
 #!/usr/bin/env python3
+from dotenv import load_dotenv
 import boto3
 import openai
 import os
@@ -15,6 +16,7 @@ import textwrap
 import threading
 import time
 
+load_dotenv()
 from os import environ
 environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
@@ -35,10 +37,12 @@ recorder = None
 wav_file = None
 
 GPT_model = "gpt-4" # most capable GPT model and optimized for chat.  You can substitute with gpt-3.5-turbo for lower cost and latency.
-openai.api_key = os.getenv('OPENAI_API_KEY')
+oi_api_key = os.getenv('OPENAI_API_KEY')
 pv_access_key= os.getenv('PICOVOICE_API_KEY')
 
-client = OpenAI(api_key=openai.api_key)
+client = OpenAI(
+  api_key=oi_api_key
+)
 
 prompt = [
     # '안녕하세요'
