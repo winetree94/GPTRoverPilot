@@ -2,6 +2,9 @@
 
 #!/usr/bin/env python3
 from dotenv import load_dotenv
+load_dotenv()
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import boto3
 import openai
 import os
@@ -15,20 +18,13 @@ import sys
 import textwrap
 import threading
 import time
-
-load_dotenv()
-from os import environ
-environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
-
 from colorama import Fore, Style
 from openai import OpenAI
 from pvleopard import *
 from pvrecorder import PvRecorder
 from threading import Thread, Event
 from time import sleep
-
-
 
 audio_stream = None
 cobra = None
@@ -37,7 +33,6 @@ polly = boto3.client('polly', region_name='us-west-2')
 porcupine = None
 recorder = None
 wav_file = None
-
 GPT_model = "gpt-4" # most capable GPT model and optimized for chat.  You can substitute with gpt-3.5-turbo for lower cost and latency.
 oi_api_key = os.getenv('OPENAI_API_KEY')
 pv_access_key= os.getenv('PICOVOICE_API_KEY')
@@ -59,8 +54,13 @@ prompt = [
     ]
 
 chat_log=[
-    {"role": "system", "content": "Your name is DaVinci. You are a helpful assistant. If asked about yourself, you include your name in your response."},
-    ]
+    {
+        "role": 
+            "system", 
+            "content": 
+                "Your name is DaVinci. You are a helpful assistant. If asked about yourself, you include your name in your response."
+    },
+]
 
 def list_audio_devices():
     p = pyaudio.PyAudio()
