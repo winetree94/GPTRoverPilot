@@ -18,6 +18,9 @@ import voice
 import gpt as ChatGPT
 import printer
 
+devices = PvRecorder.get_available_devices()
+print(devices)
+
 load_dotenv()
 
 RECORDER = None
@@ -72,7 +75,7 @@ class Recorder(Thread):
     def run(self):
         self._is_recording = True
 
-        recorder = PvRecorder(device_index=-1, frame_length=512)
+        recorder = PvRecorder(device_index=3, frame_length=512)
         recorder.start()
 
         while not self._stop:

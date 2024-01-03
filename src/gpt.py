@@ -57,7 +57,7 @@ class ChatGPT:
                 "role": 
                     "system", 
                     "content": 
-                        "Your name is DaVinci. You are a helpful assistant."
+                        "Your name is Jarvis. You are a helpful assistant."
                         "If asked about yourself, you include your name in your response."
             }
         ]
