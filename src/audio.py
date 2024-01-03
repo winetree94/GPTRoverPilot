@@ -14,6 +14,7 @@ import pvcobra
 
 class PilotAudio:
     """_summary_
+        pyaudio 와 picovoice 를 사용하여 오디오 입력을 처리합니다.
     """
     pyaudio = pyaudio.PyAudio()
 

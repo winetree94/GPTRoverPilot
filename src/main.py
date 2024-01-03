@@ -58,6 +58,7 @@ def append_clear_countdown():
     gpt.clear()
     global count
     count = 0
+
 class Recorder(Thread):
     def __init__(self):
         super().__init__()
