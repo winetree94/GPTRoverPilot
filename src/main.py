@@ -22,30 +22,24 @@ from openai import OpenAI
 from pvrecorder import PvRecorder
 from dotenv import load_dotenv
 from pvleopard import *
-
 import audio
 
 load_dotenv()
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
 
-audio_stream = None
-cobra = None
-pa = None
 polly = boto3.client('polly', region_name='us-west-2')
-porcupine = None
-recorder = None
-wav_file = None
-GPT_model = "gpt-4" # most capable GPT model and optimized for chat.  You can substitute with gpt-3.5-turbo for lower cost and latency.
-oi_api_key = os.getenv('OPENAI_API_KEY')
-pv_access_key= os.getenv('PICOVOICE_API_KEY')
+RECORDER = None
+
+GPT_MODEL = "gpt-4"
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+PICOVOICE_API_KEY= os.getenv('PICOVOICE_API_KEY')
 
 client = OpenAI(
-  api_key=oi_api_key
+  api_key=OPENAI_API_KEY
 )
 
 prompt = [
-    # '안녕하세요'
     "How may I assist you?",
     "How may I help?",
     "What can I do for you?",
@@ -54,7 +48,7 @@ prompt = [
     "I'm here.",
     "I'm listening.",
     "What would you like me to do?"
-    ]
+]
 
 chat_log=[
     {
@@ -78,7 +72,7 @@ def ChatGPT(query):
     ]
     send_query = (chat_log + user_query)
     response = client.chat.completions.create(
-    model=GPT_model,
+    model=GPT_MODEL,
     messages=send_query
     )
     answer = response.choices[0].message.content
@@ -142,10 +136,11 @@ def voice(chat):
 
 def wake_word():
     keywords = ["computer", "jarvis", "americano"]
-    porcupine = pvporcupine.create(keywords=keywords,
-                            access_key=pv_access_key,
-                            sensitivities=[1, 1, 1], #from 0 to 1.0 - a higher number reduces the miss rate at the cost of increased false alarms
-                                   )
+    porcupine = pvporcupine.create(
+        keywords=keywords,
+        access_key=PICOVOICE_API_KEY,
+        sensitivities=[1, 1, 1],
+    )
     devnull = os.open(os.devnull, os.O_WRONLY)
     old_stderr = os.dup(2)
     sys.stderr.flush()
@@ -153,12 +148,13 @@ def wake_word():
     os.close(devnull)
 
     porcupine_audio_stream = py_audio.open(
-                    rate=porcupine.sample_rate,
-                    input_device_index=selected_device,
-                    channels=1,
-                    format=pyaudio.paInt16,
-                    input=True,
-                    frames_per_buffer=porcupine.frame_length)
+        rate=porcupine.sample_rate,
+        input_device_index=selected_device,
+        channels=1,
+        format=pyaudio.paInt16,
+        input=True,
+        frames_per_buffer=porcupine.frame_length
+    )
     
     Detect = True
 
@@ -180,7 +176,7 @@ def wake_word():
             Detect = False
 
 def listen():
-    cobra = pvcobra.create(access_key=pv_access_key)
+    cobra = pvcobra.create(access_key=PICOVOICE_API_KEY)
 
     listen_audio_stream = py_audio.open(
         rate=cobra.sample_rate,
@@ -204,7 +200,7 @@ def listen():
             break
 
 def detect_silence():
-    cobra = pvcobra.create(access_key=pv_access_key)
+    cobra = pvcobra.create(access_key=PICOVOICE_API_KEY)
 
     cobra_audio_stream = py_audio.open(
         rate=cobra.sample_rate,
@@ -263,7 +259,7 @@ class Recorder(Thread):
 
 try:
     pv_leopard = pvleopard.create(
-        access_key=pv_access_key,
+        access_key=PICOVOICE_API_KEY,
         enable_automatic_punctuation = True,
     )
 
@@ -280,12 +276,12 @@ try:
             count += 1
             wake_word()
             voice(random.choice(prompt))
-            recorder = Recorder()
-            recorder.start()
+            RECORDER = Recorder()
+            RECORDER.start()
             listen()
             detect_silence()
-            transcript, words = pv_leopard.process(recorder.stop())
-            recorder.stop()
+            transcript, words = pv_leopard.process(RECORDER.stop())
+            RECORDER.stop()
             print(transcript)
             res = ChatGPT(transcript)
             print("\nChatGPT's response is:\n")
@@ -296,35 +292,35 @@ try:
             t1.join()
             t2.join()
             event.set()
-            recorder.stop()
+            RECORDER.stop()
             pv_leopard.delete()
-            recorder = None
+            RECORDER = None
 
         except openai.RateLimitError as e:
             print("\nYou have hit your assigned rate limit.")
             voice("\nYou have hit your assigned rate limit.")
             event.set()
-            recorder.stop()
+            RECORDER.stop()
             pv_leopard.delete()
-            recorder = None
+            RECORDER = None
             break
 
         except openai.APIConnectionError as e:
             print("\nI am having trouble connecting to the API.  Please check your network connection and then try again.")
             voice("\nI am having trouble connecting to the A P I.  Please check your network connection and try again.")
             event.set()
-            recorder.stop()
+            RECORDER.stop()
             pv_leopard.delete()
-            recorder = None
+            RECORDER = None
             sleep(1)
 
         except openai.AuthenticationError as e:
             print("\nYour OpenAI API key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             voice("\nYour Open A I A P I key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             event.set()
-            recorder.stop()
+            RECORDER.stop()
             pv_leopard.delete()
-            recorder = None
+            RECORDER = None
             break
 
         except openai.APIError as e:
@@ -332,9 +328,9 @@ try:
             voice("\nThere was an A P I error.  Please try again in a few minutes.")
             print(e)
             event.set()
-            recorder.stop()
+            RECORDER.stop()
             pv_leopard.delete()
-            recorder = None
+            RECORDER = None
             sleep(1)
 
 except KeyboardInterrupt:
