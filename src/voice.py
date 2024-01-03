@@ -20,9 +20,9 @@ def voice(
         chat (_type_): _description_
     """
     voice_res = polly.synthesize_speech(
-        Text=chat,
-        OutputFormat="mp3",
-        VoiceId="Matthew"
+        Text = chat,
+        OutputFormat = "mp3",
+        VoiceId = "Matthew"
     )
 
     if "AudioStream" in voice_res:

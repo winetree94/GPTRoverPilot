@@ -98,8 +98,8 @@ try:
 
     event = threading.Event()
     count = 0
+    print('Jarvis is online')
     voice.voice("Jarvis is online")
-    print('pilot is ready')
 
     while True:
         try:
