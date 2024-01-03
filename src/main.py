@@ -23,7 +23,6 @@ print(devices)
 
 load_dotenv()
 
-RECORDER = None
 GPT_MODEL: Final = str(os.getenv('OPENAI_GPT_MODEL', 'gpt-4'))
 OPENAI_API_KEY: Final = str(os.getenv('OPENAI_API_KEY'))
 PICOVOICE_API_KEY: Final = str(os.getenv('PICOVOICE_API_KEY'))
@@ -99,11 +98,13 @@ try:
 
     event = threading.Event()
     count = 0
+    voice.voice("Jarvis is online")
+    print('pilot is ready')
 
     while True:
         try:
             if count == 0:
-                t_count = threading.Thread(target=append_clear_countdown)
+                t_count = threading.Thread(target = append_clear_countdown)
                 t_count.start()
             else:
                 pass
@@ -111,51 +112,53 @@ try:
             count += 1
             pilot_audio.wait_until_wake_word(selected_device)
             voice.voice(random.choice(prompt))
-            RECORDER = Recorder()
-            RECORDER.start()
+            recorder = Recorder()
+            recorder.start()
             pilot_audio.listen_until_silence()
             pilot_audio.wait_until_silence()
-            transcript, words = pv_leopard.process(RECORDER.stop())
-            RECORDER.stop()
+            recorded = recorder.stop()
+            print(recorded)
+            transcript, words = pv_leopard.process(recorded)
+            recorder.stop()
             print(transcript)
             res = gpt.chat(transcript)
             print("\nChatGPT's response is:\n")
-            t1 = threading.Thread(target=voice.voice, args=(res,))
-            t2 = threading.Thread(target=printer.print_slowly, args=(res,))
+            t1 = threading.Thread(target = voice.voice, args=(res,))
+            t2 = threading.Thread(target = printer.print_slowly, args=(res,))
             t1.start()
             t2.start()
             t1.join()
             t2.join()
             event.set()
-            RECORDER.stop()
+            recorder.stop()
             pv_leopard.delete()
-            RECORDER = None
+            recorder = None
 
         except openai.RateLimitError as e:
             print("\nYou have hit your assigned rate limit.")
             voice.voice("\nYou have hit your assigned rate limit.")
             event.set()
-            RECORDER.stop()
+            recorder.stop()
             pv_leopard.delete()
-            RECORDER = None
+            recorder = None
             break
 
         except openai.APIConnectionError as e:
             print("\nI am having trouble connecting to the API.  Please check your network connection and then try again.")
             voice.voice("\nI am having trouble connecting to the A P I.  Please check your network connection and try again.")
             event.set()
-            RECORDER.stop()
+            recorder.stop()
             pv_leopard.delete()
-            RECORDER = None
+            recorder = None
             time.sleep(1)
 
         except openai.AuthenticationError as e:
             print("\nYour OpenAI API key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             voice.voice("\nYour Open A I A P I key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             event.set()
-            RECORDER.stop()
+            recorder.stop()
             pv_leopard.delete()
-            RECORDER = None
+            recorder = None
             break
 
         except openai.APIError as e:
@@ -163,9 +166,9 @@ try:
             voice.voice("\nThere was an A P I error.  Please try again in a few minutes.")
             print(e)
             event.set()
-            RECORDER.stop()
+            recorder.stop()
             pv_leopard.delete()
-            RECORDER = None
+            recorder = None
             time.sleep(1)
 
 except KeyboardInterrupt:

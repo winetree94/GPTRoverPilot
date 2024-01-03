@@ -129,7 +129,7 @@ class PilotAudio:
             사용자의 음성을 입력받습니다.
             조용함이 감지되면 종료됩니다.
         """
-        cobra = pvcobra.create(access_key=self.picovoice_api_key)
+        cobra = pvcobra.create(access_key = self.picovoice_api_key)
 
         listen_audio_stream = self.pyaudio.open(
             rate = cobra.sample_rate,
