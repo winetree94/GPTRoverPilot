@@ -4,28 +4,21 @@
 """
 import os
 import random
-import struct
-import sys
 import threading
 import time
 from threading import Thread
 import openai
-import pvcobra
-import pvporcupine
-import pyaudio
 import pvleopard
-from colorama import Fore
 from pvrecorder import PvRecorder
 from dotenv import load_dotenv
 from pvleopard import *
 from typing import Final
-import audio
+from audio import PilotAudio
 import voice
 import gpt as ChatGPT
 import printer
 
 load_dotenv()
-py_audio = pyaudio.PyAudio()
 
 RECORDER = None
 GPT_MODEL: Final = str(os.getenv('OPENAI_GPT_MODEL', 'gpt-4'))
@@ -33,8 +26,12 @@ OPENAI_API_KEY: Final = str(os.getenv('OPENAI_API_KEY'))
 PICOVOICE_API_KEY: Final = str(os.getenv('PICOVOICE_API_KEY'))
 selected_device = int(os.getenv('AUDIO_INPUT_DEVICE_ID'))
 
+pilot_audio = PilotAudio(
+    picovoice_api_key=PICOVOICE_API_KEY
+)
+
 if selected_device == -1:
-    audio.list_audio_devices(py_audio)
+    pilot_audio.list_audio_devices()
     selected_device = int(input("Enter the ID of the audio input device you want to use: "))
     print("You selected device with ID: ", selected_device)
 
@@ -54,8 +51,6 @@ prompt = [
     "What would you like me to do?"
 ]
 
-
-
 #DaVinci will 'remember' earlier queries so that it has greater continuity in its response
 #the following will delete that 'memory' five minutes after the start of the conversation
 def append_clear_countdown():
@@ -63,101 +58,6 @@ def append_clear_countdown():
     gpt.clear()
     global count
     count = 0
-
-def wake_word():
-    keywords = ["computer", "jarvis", "americano"]
-    porcupine = pvporcupine.create(
-        keywords=keywords,
-        access_key=PICOVOICE_API_KEY,
-        sensitivities=[1, 1, 1],
-    )
-    devnull = os.open(os.devnull, os.O_WRONLY)
-    old_stderr = os.dup(2)
-    sys.stderr.flush()
-    os.dup2(devnull, 2)
-    os.close(devnull)
-
-    porcupine_audio_stream = py_audio.open(
-        rate=porcupine.sample_rate,
-        input_device_index=selected_device,
-        channels=1,
-        format=pyaudio.paInt16,
-        input=True,
-        frames_per_buffer=porcupine.frame_length
-    )
-    
-    Detect = True
-
-    while Detect:
-        porcupine_pcm = porcupine_audio_stream.read(porcupine.frame_length)
-        porcupine_pcm = struct.unpack_from("h" * porcupine.frame_length, porcupine_pcm)
-
-        porcupine_keyword_index = porcupine.process(porcupine_pcm)
-
-        if porcupine_keyword_index >= 0:
-
-            keyword = keywords[porcupine_keyword_index]
-            print(Fore.GREEN + "\n" + keyword + " detected\n")
-            porcupine_audio_stream.stop_stream()
-            porcupine_audio_stream.close()
-            porcupine.delete()         
-            os.dup2(old_stderr, 2)
-            os.close(old_stderr)
-            Detect = False
-
-def listen():
-    cobra = pvcobra.create(access_key=PICOVOICE_API_KEY)
-
-    listen_audio_stream = py_audio.open(
-        rate = cobra.sample_rate,
-        channels = 1,
-        format = pyaudio.paInt16,
-        input = True,
-        frames_per_buffer = cobra.frame_length
-    )
-
-    print("Listening...")
-
-    while True:
-        listen_pcm = listen_audio_stream.read(cobra.frame_length)
-        listen_pcm = struct.unpack_from("h" * cobra.frame_length, listen_pcm)
-
-        if cobra.process(listen_pcm) > 0.3:
-            print("Voice detected")
-            listen_audio_stream.stop_stream()
-            listen_audio_stream.close()
-            cobra.delete()
-            break
-
-def detect_silence():
-    cobra = pvcobra.create(access_key=PICOVOICE_API_KEY)
-
-    cobra_audio_stream = py_audio.open(
-        rate=cobra.sample_rate,
-        channels=1,
-        format=pyaudio.paInt16,
-        input=True,
-        frames_per_buffer=cobra.frame_length
-    )
-
-    last_voice_time = time.time()
-
-    while True:
-        cobra_pcm = cobra_audio_stream.read(cobra.frame_length)
-        cobra_pcm = struct.unpack_from("h" * cobra.frame_length, cobra_pcm)
-           
-        if cobra.process(cobra_pcm) > 0.2:
-            last_voice_time = time.time()
-        else:
-            silence_duration = time.time() - last_voice_time
-            if silence_duration > 1.3:
-                print("End of query detected\n")
-                cobra_audio_stream.stop_stream()
-                cobra_audio_stream.close()
-                cobra.delete()
-                last_voice_time=None
-                break
-
 class Recorder(Thread):
     def __init__(self):
         super().__init__()
@@ -203,13 +103,14 @@ try:
                 t_count.start()
             else:
                 pass
+
             count += 1
-            wake_word()
+            pilot_audio.wait_until_wake_word(selected_device)
             voice.voice(random.choice(prompt))
             RECORDER = Recorder()
             RECORDER.start()
-            listen()
-            detect_silence()
+            pilot_audio.listen_until_silence()
+            pilot_audio.wait_until_silence()
             transcript, words = pv_leopard.process(RECORDER.stop())
             RECORDER.stop()
             print(transcript)
