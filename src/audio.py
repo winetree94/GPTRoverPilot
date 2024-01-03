@@ -4,22 +4,23 @@
 Returns:
     _type_: _description_
 """
-import pyaudio
 
-def list_audio_devices():
+def list_audio_devices(pyaudio):
     """_summary_
     사용자가 가지고 있는 오디오 Input 장치의 목록과 ID를 출력합니다.
+
+    Args:
+        pyaudio (_type_): _description_
     """
-    p = pyaudio.PyAudio()
-    info = p.get_host_api_info_by_index(0)
-    numdevices = info.get('deviceCount')
+    numdevices = pyaudio.get_device_count()
     for i in range(0, numdevices):
-        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+        device = pyaudio.get_device_info_by_index(i)
+        if (device.get('maxInputChannels')) > 0:
             print(
                 "Input Device id ",
                 i,
                 " - ",
-                p.get_device_info_by_host_api_device_index(0, i).get('name')
+                device.get('name')
             )
 
 def select_audio_device():

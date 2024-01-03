@@ -2,7 +2,6 @@
 """_summary_
     py
 """
-from os import environ
 import os
 import random
 import struct
@@ -17,7 +16,6 @@ import openai
 import pvcobra
 import pvporcupine
 import pyaudio
-import pygame
 import pvleopard
 from colorama import Fore
 from openai import OpenAI
@@ -28,7 +26,9 @@ from pvleopard import *
 import audio
 
 load_dotenv()
-environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+import pygame
+
 audio_stream = None
 cobra = None
 pa = None
@@ -61,26 +61,30 @@ chat_log=[
         "role": 
             "system", 
             "content": 
-                "Your name is Computer. You are a helpful assistant. If asked about yourself, you include your name in your response."
+                "Your name is DaVinci. You are a helpful assistant. If asked about yourself, you include your name in your response."
     },
 ]
 
-audio.list_audio_devices()
-selected_device = audio.select_audio_device()
-print("You selected device with ID: ", selected_device)
+py_audio = pyaudio.PyAudio()
+selected_device = int(os.getenv('AUDIO_INPUT_DEVICE_ID'))
+if (selected_device == -1):
+    audio.list_audio_devices(py_audio)
+    selected_device = int(input("Enter the ID of the audio input device you want to use: "))
+    print("You selected device with ID: ", selected_device)
 
 def ChatGPT(query):
     user_query = [
         {"role": "user", "content": query},
     ]
-    send_query = chat_log + user_query,
+    send_query = (chat_log + user_query)
     response = client.chat.completions.create(
-        model=GPT_model,
-        messages=send_query
+    model=GPT_model,
+    messages=send_query
     )
     answer = response.choices[0].message.content
     chat_log.append({"role": "assistant", "content": answer})
     return answer
+    
 
 def responseprinter(chat):
     wrapper = textwrap.TextWrapper(width=70)  # Adjust the width to your preference
@@ -110,13 +114,14 @@ def append_clear_countdown():
     t_count.join
 
 def voice(chat):
-    voiceResponse = polly.synthesize_speech(
-                        Text=chat,
-                        OutputFormat="mp3",
-                        VoiceId="Matthew"
-                    ) #other options include Amy, Joey, Nicole, Raveena and Russell
-    if "AudioStream" in voiceResponse:
-        with voiceResponse["AudioStream"] as stream:
+    voice_res = polly.synthesize_speech(
+        Text=chat,
+        OutputFormat="mp3",
+        VoiceId="Matthew"
+    )
+
+    if "AudioStream" in voice_res:
+        with voice_res["AudioStream"] as stream:
             output_file = "speech.mp3"
             try:
                 with open(output_file, "wb") as file:
@@ -129,7 +134,6 @@ def voice(chat):
 
     pygame.mixer.init()
     pygame.mixer.music.load(output_file)
-    #    pygame.mixer.music.set_volume(0.8) # uncomment to control the the playback volume (from 0.0 to 1.0
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy():
         pass
@@ -147,10 +151,8 @@ def wake_word():
     sys.stderr.flush()
     os.dup2(devnull, 2)
     os.close(devnull)
-    
-    wake_pa = pyaudio.PyAudio()
 
-    porcupine_audio_stream = wake_pa.open(
+    porcupine_audio_stream = py_audio.open(
                     rate=porcupine.sample_rate,
                     input_device_index=selected_device,
                     channels=1,
@@ -170,7 +172,7 @@ def wake_word():
 
             keyword = keywords[porcupine_keyword_index]
             print(Fore.GREEN + "\n" + keyword + " detected\n")
-            porcupine_audio_stream.stop_stream
+            porcupine_audio_stream.stop_stream()
             porcupine_audio_stream.close()
             porcupine.delete()         
             os.dup2(old_stderr, 2)
@@ -179,9 +181,8 @@ def wake_word():
 
 def listen():
     cobra = pvcobra.create(access_key=pv_access_key)
-    listen_pa = pyaudio.PyAudio()
 
-    listen_audio_stream = listen_pa.open(
+    listen_audio_stream = py_audio.open(
         rate=cobra.sample_rate,
         channels=1,
         format=pyaudio.paInt16,
@@ -204,9 +205,8 @@ def listen():
 
 def detect_silence():
     cobra = pvcobra.create(access_key=pv_access_key)
-    silence_pa = pyaudio.PyAudio()
 
-    cobra_audio_stream = silence_pa.open(
+    cobra_audio_stream = py_audio.open(
         rate=cobra.sample_rate,
         channels=1,
         format=pyaudio.paInt16,
@@ -262,7 +262,7 @@ class Recorder(Thread):
         return self._pcm
 
 try:
-    o = pvleopard.create(
+    pv_leopard = pvleopard.create(
         access_key=pv_access_key,
         enable_automatic_punctuation = True,
     )
@@ -284,12 +284,11 @@ try:
             recorder.start()
             listen()
             detect_silence()
-            transcript, words = o.process(recorder.stop())
+            transcript, words = pv_leopard.process(recorder.stop())
             recorder.stop()
             print(transcript)
-#            voice(transcript) # uncomment to have DaVinci repeat what it heard
-            (res) = ChatGPT(transcript)
-            print("\nChatGPT's response is:\n")        
+            res = ChatGPT(transcript)
+            print("\nChatGPT's response is:\n")
             t1 = threading.Thread(target=voice, args=(res,))
             t2 = threading.Thread(target=responseprinter, args=(res,))
             t1.start()
@@ -298,7 +297,7 @@ try:
             t2.join()
             event.set()
             recorder.stop()
-            o.delete()
+            pv_leopard.delete()
             recorder = None
 
         except openai.RateLimitError as e:
@@ -306,7 +305,7 @@ try:
             voice("\nYou have hit your assigned rate limit.")
             event.set()
             recorder.stop()
-            o.delete()
+            pv_leopard.delete()
             recorder = None
             break
 
@@ -315,7 +314,7 @@ try:
             voice("\nI am having trouble connecting to the A P I.  Please check your network connection and try again.")
             event.set()
             recorder.stop()
-            o.delete()
+            pv_leopard.delete()
             recorder = None
             sleep(1)
 
@@ -324,7 +323,7 @@ try:
             voice("\nYour Open A I A P I key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             event.set()
             recorder.stop()
-            o.delete()
+            pv_leopard.delete()
             recorder = None
             break
 
@@ -334,10 +333,10 @@ try:
             print(e)
             event.set()
             recorder.stop()
-            o.delete()
+            pv_leopard.delete()
             recorder = None
             sleep(1)
 
 except KeyboardInterrupt:
     print("\nExiting ChatGPT Virtual Assistant")
-    o.delete()
+    pv_leopard.delete()
