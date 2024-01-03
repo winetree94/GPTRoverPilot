@@ -7,16 +7,15 @@ import random
 import threading
 import time
 from threading import Thread
+from typing import Final
 import openai
-import pvleopard
 from pvrecorder import PvRecorder
 from dotenv import load_dotenv
-from pvleopard import *
-from typing import Final
 from audio import PilotAudio
 import voice
 import gpt as ChatGPT
 import printer
+from tts import PilotTTS
 
 devices = PvRecorder.get_available_devices()
 print(devices)
@@ -26,21 +25,26 @@ load_dotenv()
 GPT_MODEL: Final = str(os.getenv('OPENAI_GPT_MODEL', 'gpt-4'))
 OPENAI_API_KEY: Final = str(os.getenv('OPENAI_API_KEY'))
 PICOVOICE_API_KEY: Final = str(os.getenv('PICOVOICE_API_KEY'))
+
 selected_device = int(os.getenv('AUDIO_INPUT_DEVICE_ID'))
+
+pilot_tts = PilotTTS(
+    picovoice_api_key=PICOVOICE_API_KEY
+)
 
 pilot_audio = PilotAudio(
     picovoice_api_key=PICOVOICE_API_KEY
+)
+
+pilot_gpt = ChatGPT.ChatGPT(
+    key=OPENAI_API_KEY,
+    default_model=GPT_MODEL,
 )
 
 if selected_device == -1:
     pilot_audio.list_audio_devices()
     selected_device = int(input("Enter the ID of the audio input device you want to use: "))
     print("You selected device with ID: ", selected_device)
-
-gpt = ChatGPT.ChatGPT(
-    key=OPENAI_API_KEY,
-    default_model=GPT_MODEL,
-)
 
 prompt = [
     "How may I assist you?",
@@ -53,11 +57,9 @@ prompt = [
     "What would you like me to do?"
 ]
 
-#DaVinci will 'remember' earlier queries so that it has greater continuity in its response
-#the following will delete that 'memory' five minutes after the start of the conversation
 def append_clear_countdown():
     time.sleep(300)
-    gpt.clear()
+    pilot_gpt.clear()
     global count
     count = 0
 
@@ -91,11 +93,6 @@ class Recorder(Thread):
         return self._pcm
 
 try:
-    pv_leopard = pvleopard.create(
-        access_key=PICOVOICE_API_KEY,
-        enable_automatic_punctuation = True,
-    )
-
     event = threading.Event()
     count = 0
     print('Jarvis is online')
@@ -117,11 +114,10 @@ try:
             pilot_audio.listen_until_silence()
             pilot_audio.wait_until_silence()
             recorded = recorder.stop()
-            print(recorded)
-            transcript, words = pv_leopard.process(recorded)
+            transcript, words = pilot_tts.speech_to_text(recorded)
             recorder.stop()
             print(transcript)
-            res = gpt.chat(transcript)
+            res = pilot_gpt.chat(transcript)
             print("\nChatGPT's response is:\n")
             t1 = threading.Thread(target = voice.voice, args=(res,))
             t2 = threading.Thread(target = printer.print_slowly, args=(res,))
@@ -131,7 +127,6 @@ try:
             t2.join()
             event.set()
             recorder.stop()
-            pv_leopard.delete()
             recorder = None
 
         except openai.RateLimitError as e:
@@ -139,7 +134,6 @@ try:
             voice.voice("\nYou have hit your assigned rate limit.")
             event.set()
             recorder.stop()
-            pv_leopard.delete()
             recorder = None
             break
 
@@ -148,7 +142,6 @@ try:
             voice.voice("\nI am having trouble connecting to the A P I.  Please check your network connection and try again.")
             event.set()
             recorder.stop()
-            pv_leopard.delete()
             recorder = None
             time.sleep(1)
 
@@ -157,7 +150,6 @@ try:
             voice.voice("\nYour Open A I A P I key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             event.set()
             recorder.stop()
-            pv_leopard.delete()
             recorder = None
             break
 
@@ -167,10 +159,9 @@ try:
             print(e)
             event.set()
             recorder.stop()
-            pv_leopard.delete()
             recorder = None
             time.sleep(1)
 
 except KeyboardInterrupt:
     print("\nExiting ChatGPT Virtual Assistant")
-    pv_leopard.delete()
+    pilot_tts.delete()

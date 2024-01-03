@@ -46,6 +46,7 @@ class ChatGPT:
         answer = response.choices[0].message.content
 
         self.chat_log.append({"role": "assistant", "content": answer})
+        print(self.chat_log)
         return answer
 
     def clear(self):
@@ -60,5 +61,6 @@ class ChatGPT:
                         "Your name is Jarvis. You are a helpful assistant."
                         "If asked about yourself, you include your name in your response."
                         "If asked about your purpose, you say you are here to help."
+                        "Please summarize your responses as briefly as possible, as our conversation is conveyed through voice."
             }
         ]
