@@ -4,6 +4,8 @@
 """
 import os
 import random
+import wave
+import struct
 import threading
 import time
 from threading import Thread
@@ -47,14 +49,14 @@ if selected_device == -1:
     print("You selected device with ID: ", selected_device)
 
 prompt = [
-    "How may I assist you?",
-    "How may I help?",
-    "What can I do for you?",
-    "Ask me anything.",
-    "Yes?",
-    "I'm here.",
-    "I'm listening.",
-    "What would you like me to do?"
+    "무엇을 도와드릴까요?",
+    # "How may I help?",
+    # "What can I do for you?",
+    # "Ask me anything.",
+    # "Yes?",
+    # "I'm here.",
+    # "I'm listening.",
+    # "What would you like me to do?"
 ]
 
 def append_clear_countdown():
@@ -76,7 +78,7 @@ class Recorder(Thread):
     def run(self):
         self._is_recording = True
 
-        recorder = PvRecorder(device_index=3, frame_length=512)
+        recorder = PvRecorder(device_index=-1, frame_length=512)
         recorder.start()
 
         while not self._stop:
@@ -95,8 +97,8 @@ class Recorder(Thread):
 try:
     event = threading.Event()
     count = 0
-    print('Jarvis is online')
-    voice.voice("Jarvis is online")
+    print('안녕하세요 서연입니다.')
+    voice.voice("안녕하세요 서연입니다.")
 
     while True:
         try:
@@ -108,14 +110,18 @@ try:
 
             count += 1
             pilot_audio.wait_until_wake_word(selected_device)
+            # pilot_audio.listen_for_wake_word2(pilot_tts.speech_recognition, speech_recognition.Microphone())
             voice.voice(random.choice(prompt))
             recorder = Recorder()
             recorder.start()
             pilot_audio.listen_until_silence()
             pilot_audio.wait_until_silence()
             recorded = recorder.stop()
-            transcript, words = pilot_tts.speech_to_text(recorded)
-            recorder.stop()
+            out = wave.open('recorded.wav', 'w')
+            out.setparams((1, 2, 16000, 512, "NONE", "NONE"))
+            out.writeframes(struct.pack("h" * len(recorded), *recorded))
+            transcript = pilot_tts.speech_to_text('recorded.wav')
+            # transcript, words = pilot_tts.speech_to_text_legacy(recorded)
             print(transcript)
             res = pilot_gpt.chat(transcript)
             print("\nChatGPT's response is:\n")

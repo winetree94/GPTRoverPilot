@@ -11,6 +11,7 @@ import pyaudio
 from colorama import Fore
 import pvporcupine
 import pvcobra
+import speech_recognition
 
 class PilotAudio:
     """_summary_
@@ -54,7 +55,7 @@ class PilotAudio:
         """_summary_
             wake word 가 감지될 때까지 대기합니다.
         """
-        keywords = ["computer", "jarvis", "americano"]
+        keywords = ["jarvis", "jarvis", "americano"]
         porcupine = pvporcupine.create(
             keywords = keywords,
             access_key = self.picovoice_api_key,
@@ -92,6 +93,17 @@ class PilotAudio:
                 os.dup2(old_stderr, 2)
                 os.close(old_stderr)
                 detected = False
+
+    def listen_for_wake_word2(self, sr, source):
+        while True:
+            audio = sr.listen(source)
+            try:
+                text = sr.recognize_google(audio)
+                if "서연" in text.lower():
+                    print("Wake word detected.")
+                    return;
+            except speech_recognition.UnknownValueError:
+                pass
 
     def wait_until_silence(self):
         """_summary_

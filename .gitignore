@@ -161,3 +161,4 @@ cython_debug/
 
 venv
 speech.mp3
+recorded.wav

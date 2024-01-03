@@ -22,7 +22,7 @@ def voice(
     voice_res = polly.synthesize_speech(
         Text = chat,
         OutputFormat = "mp3",
-        VoiceId = "Matthew"
+        VoiceId = "Seoyeon"
     )
 
     if "AudioStream" in voice_res:
