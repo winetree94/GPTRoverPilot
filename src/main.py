@@ -6,7 +6,6 @@ import os
 import random
 import struct
 import sys
-import textwrap
 import threading
 import time
 from threading import Thread
@@ -16,23 +15,32 @@ import pvporcupine
 import pyaudio
 import pvleopard
 from colorama import Fore
-from openai import OpenAI
 from pvrecorder import PvRecorder
 from dotenv import load_dotenv
 from pvleopard import *
+from typing import Final
 import audio
 import voice
+import gpt as ChatGPT
+import printer
 
 load_dotenv()
+py_audio = pyaudio.PyAudio()
 
 RECORDER = None
+GPT_MODEL: Final = str(os.getenv('OPENAI_GPT_MODEL', 'gpt-4'))
+OPENAI_API_KEY: Final = str(os.getenv('OPENAI_API_KEY'))
+PICOVOICE_API_KEY: Final = str(os.getenv('PICOVOICE_API_KEY'))
+selected_device = int(os.getenv('AUDIO_INPUT_DEVICE_ID'))
 
-GPT_MODEL = "gpt-4"
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-PICOVOICE_API_KEY= os.getenv('PICOVOICE_API_KEY')
+if selected_device == -1:
+    audio.list_audio_devices(py_audio)
+    selected_device = int(input("Enter the ID of the audio input device you want to use: "))
+    print("You selected device with ID: ", selected_device)
 
-client = OpenAI(
-  api_key=OPENAI_API_KEY
+gpt = ChatGPT.ChatGPT(
+    key=OPENAI_API_KEY,
+    default_model=GPT_MODEL,
 )
 
 prompt = [
@@ -46,62 +54,15 @@ prompt = [
     "What would you like me to do?"
 ]
 
-chat_log=[
-    {
-        "role": 
-            "system", 
-            "content": 
-                "Your name is DaVinci. You are a helpful assistant. If asked about yourself, you include your name in your response."
-    },
-]
 
-py_audio = pyaudio.PyAudio()
-selected_device = int(os.getenv('AUDIO_INPUT_DEVICE_ID'))
-if (selected_device == -1):
-    audio.list_audio_devices(py_audio)
-    selected_device = int(input("Enter the ID of the audio input device you want to use: "))
-    print("You selected device with ID: ", selected_device)
-
-def ChatGPT(query):
-    user_query = [
-        {"role": "user", "content": query},
-    ]
-    send_query = (chat_log + user_query)
-    response = client.chat.completions.create(
-    model=GPT_MODEL,
-    messages=send_query
-    )
-    answer = response.choices[0].message.content
-    chat_log.append({"role": "assistant", "content": answer})
-    return answer
-    
-
-def responseprinter(chat):
-    wrapper = textwrap.TextWrapper(width=70)  # Adjust the width to your preference
-    paragraphs = res.split('\n')
-    wrapped_chat = "\n".join([wrapper.fill(p) for p in paragraphs])
-    for word in wrapped_chat:
-        time.sleep(0.06)
-        print(word, end="", flush=True)
-    print()
 
 #DaVinci will 'remember' earlier queries so that it has greater continuity in its response
 #the following will delete that 'memory' five minutes after the start of the conversation
 def append_clear_countdown():
     time.sleep(300)
-    global chat_log
-    chat_log.clear()
-    chat_log=[
-        {
-            "role": 
-                "system", 
-                "content": 
-                    "Your name is DaVinci. You are a helpful assistant. If asked about yourself, you include your name in your response."
-        }
-    ]
+    gpt.clear()
     global count
     count = 0
-    t_count.join
 
 def wake_word():
     keywords = ["computer", "jarvis", "americano"]
@@ -148,11 +109,11 @@ def listen():
     cobra = pvcobra.create(access_key=PICOVOICE_API_KEY)
 
     listen_audio_stream = py_audio.open(
-        rate=cobra.sample_rate,
-        channels=1,
-        format=pyaudio.paInt16,
-        input=True,
-        frames_per_buffer=cobra.frame_length
+        rate = cobra.sample_rate,
+        channels = 1,
+        format = pyaudio.paInt16,
+        input = True,
+        frames_per_buffer = cobra.frame_length
     )
 
     print("Listening...")
@@ -160,7 +121,7 @@ def listen():
     while True:
         listen_pcm = listen_audio_stream.read(cobra.frame_length)
         listen_pcm = struct.unpack_from("h" * cobra.frame_length, listen_pcm)
-           
+
         if cobra.process(listen_pcm) > 0.3:
             print("Voice detected")
             listen_audio_stream.stop_stream()
@@ -252,10 +213,10 @@ try:
             transcript, words = pv_leopard.process(RECORDER.stop())
             RECORDER.stop()
             print(transcript)
-            res = ChatGPT(transcript)
+            res = gpt.chat(transcript)
             print("\nChatGPT's response is:\n")
             t1 = threading.Thread(target=voice.voice, args=(res,))
-            t2 = threading.Thread(target=responseprinter, args=(res,))
+            t2 = threading.Thread(target=printer.print_slowly, args=(res,))
             t1.start()
             t2.start()
             t1.join()

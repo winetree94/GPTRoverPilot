@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=C0413
 """_summary_
 """
 import os
@@ -9,7 +10,15 @@ import boto3
 
 polly = boto3.client('polly', region_name='us-west-2')
 
-def voice(chat):
+def voice(
+    chat: str,
+):
+    """_summary_
+        대화 내용을 음성으로 출력합니다.
+
+    Args:
+        chat (_type_): _description_
+    """
     voice_res = polly.synthesize_speech(
         Text=chat,
         OutputFormat="mp3",
