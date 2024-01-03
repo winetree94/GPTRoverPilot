@@ -9,9 +9,7 @@ import sys
 import textwrap
 import threading
 import time
-from time import sleep
 from threading import Thread
-import boto3
 import openai
 import pvcobra
 import pvporcupine
@@ -23,12 +21,10 @@ from pvrecorder import PvRecorder
 from dotenv import load_dotenv
 from pvleopard import *
 import audio
+import voice
 
 load_dotenv()
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
-import pygame
 
-polly = boto3.client('polly', region_name='us-west-2')
 RECORDER = None
 
 GPT_MODEL = "gpt-4"
@@ -92,7 +88,7 @@ def responseprinter(chat):
 #DaVinci will 'remember' earlier queries so that it has greater continuity in its response
 #the following will delete that 'memory' five minutes after the start of the conversation
 def append_clear_countdown():
-    sleep(300)
+    time.sleep(300)
     global chat_log
     chat_log.clear()
     chat_log=[
@@ -106,33 +102,6 @@ def append_clear_countdown():
     global count
     count = 0
     t_count.join
-
-def voice(chat):
-    voice_res = polly.synthesize_speech(
-        Text=chat,
-        OutputFormat="mp3",
-        VoiceId="Matthew"
-    )
-
-    if "AudioStream" in voice_res:
-        with voice_res["AudioStream"] as stream:
-            output_file = "speech.mp3"
-            try:
-                with open(output_file, "wb") as file:
-                    file.write(stream.read())
-            except IOError as error:
-                print(error)
-
-    else:
-        print("did not work")
-
-    pygame.mixer.init()
-    pygame.mixer.music.load(output_file)
-    pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy():
-        pass
-    pygame.mixer.music.unload()
-    sleep(0.2)
 
 def wake_word():
     keywords = ["computer", "jarvis", "americano"]
@@ -275,7 +244,7 @@ try:
                 pass
             count += 1
             wake_word()
-            voice(random.choice(prompt))
+            voice.voice(random.choice(prompt))
             RECORDER = Recorder()
             RECORDER.start()
             listen()
@@ -285,7 +254,7 @@ try:
             print(transcript)
             res = ChatGPT(transcript)
             print("\nChatGPT's response is:\n")
-            t1 = threading.Thread(target=voice, args=(res,))
+            t1 = threading.Thread(target=voice.voice, args=(res,))
             t2 = threading.Thread(target=responseprinter, args=(res,))
             t1.start()
             t2.start()
@@ -298,7 +267,7 @@ try:
 
         except openai.RateLimitError as e:
             print("\nYou have hit your assigned rate limit.")
-            voice("\nYou have hit your assigned rate limit.")
+            voice.voice("\nYou have hit your assigned rate limit.")
             event.set()
             RECORDER.stop()
             pv_leopard.delete()
@@ -307,16 +276,16 @@ try:
 
         except openai.APIConnectionError as e:
             print("\nI am having trouble connecting to the API.  Please check your network connection and then try again.")
-            voice("\nI am having trouble connecting to the A P I.  Please check your network connection and try again.")
+            voice.voice("\nI am having trouble connecting to the A P I.  Please check your network connection and try again.")
             event.set()
             RECORDER.stop()
             pv_leopard.delete()
             RECORDER = None
-            sleep(1)
+            time.sleep(1)
 
         except openai.AuthenticationError as e:
             print("\nYour OpenAI API key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
-            voice("\nYour Open A I A P I key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
+            voice.voice("\nYour Open A I A P I key or token is invalid, expired, or revoked.  Please fix this issue and then restart my program.")
             event.set()
             RECORDER.stop()
             pv_leopard.delete()
@@ -325,13 +294,13 @@ try:
 
         except openai.APIError as e:
             print("\nThere was an API error.  Please try again in a few minutes.")
-            voice("\nThere was an A P I error.  Please try again in a few minutes.")
+            voice.voice("\nThere was an A P I error.  Please try again in a few minutes.")
             print(e)
             event.set()
             RECORDER.stop()
             pv_leopard.delete()
             RECORDER = None
-            sleep(1)
+            time.sleep(1)
 
 except KeyboardInterrupt:
     print("\nExiting ChatGPT Virtual Assistant")
