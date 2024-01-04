@@ -5,6 +5,7 @@ sudo apt install \
   python3-dev \
   python3-pip \
   python-is-python3 \
+  python3.10-venv \
   portaudio19-dev \
   python3-pyaudio \
   libespeak1 \
