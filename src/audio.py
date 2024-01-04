@@ -94,16 +94,18 @@ class PilotAudio:
                 os.close(old_stderr)
                 detected = False
 
-    def listen_for_wake_word2(self, sr, source):
-        while True:
-            audio = sr.listen(source)
-            try:
-                text = sr.recognize_google(audio)
-                if "서연" in text.lower():
-                    print("Wake word detected.")
-                    return;
-            except speech_recognition.UnknownValueError:
-                pass
+    def listen_for_wake_word2(self, sr):
+        with speech_recognition.Microphone() as source:
+            while True:
+                sr.adjust_for_ambient_noise(source, duration=1)
+                audio = sr.listen(source)
+                try:
+                    text = sr.recognize_google(audio, language='ko-KR')
+                    if "서연" in text.lower():
+                        print("Wake word detected.")
+                        return
+                except speech_recognition.UnknownValueError:
+                    pass
 
     def wait_until_silence(self):
         """_summary_

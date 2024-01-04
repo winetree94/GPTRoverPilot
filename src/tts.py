@@ -3,8 +3,6 @@
 """
 import pvleopard
 import speech_recognition
-import struct
-import librosa
 
 class PilotTTS:
     """_summary_
@@ -40,7 +38,7 @@ class PilotTTS:
         Returns:
             _type_: _description_
         """
-        
+
         with speech_recognition.AudioFile(file_name) as source:
             return self.speech_recognition.recognize_google(
                 self.speech_recognition.record(source),

@@ -109,6 +109,9 @@ try:
                 pass
 
             count += 1
+            # pilot_audio.listen_for_wake_word2(
+            #     pilot_tts.speech_recognition
+            # )
             pilot_audio.wait_until_wake_word(selected_device)
             # pilot_audio.listen_for_wake_word2(pilot_tts.speech_recognition, speech_recognition.Microphone())
             voice.voice(random.choice(prompt))
