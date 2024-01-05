@@ -1,52 +1,28 @@
 """_summary_
-    음성을 텍스트로 변환하거나, 텍스트를 음성으로 변환하기 위한 모듈
+    TTS 관련 유틸 모음
 """
-import pvleopard
-import speech_recognition
+# pylint: disable=C0413
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+import io
+import gtts
+import pygame
 
-class PilotTTS:
-    """_summary_
-        Picovoice Leopard 를 쉽게 사용하기 위한 추상화 클래스입니다.
+def play(text: str, language: str) -> None:
     """
+    텍스트를 Google TTS 를 사용하여 음성으로 전환하고 재생합니다.
+    Args:
+        text (str): 음성으로 변환할 텍스트
+    """
+    tts = gtts.gTTS(text, lang=language)
 
-    def __init__(self, picovoice_api_key: str):
-        self.pv_leopard = pvleopard.create(
-            access_key=picovoice_api_key,
-            enable_automatic_punctuation = True,
-        )
-        self.speech_recognition = speech_recognition.Recognizer()
+    mp3_fp = io.BytesIO()
+    tts.write_to_fp(mp3_fp)
+    mp3_fp.seek(0)
 
-    def speech_to_text_legacy(self, pcm: list):
-        """_summary_
-            음성을 텍스트로 변환합니다.
+    pygame.mixer.init()
+    pygame.mixer.music.load(mp3_fp)
+    pygame.mixer.music.play()
 
-        Args:
-            pcm (list): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        return self.pv_leopard.process(pcm)
-
-    def speech_to_text(self, file_name: str):
-        """_summary_
-            음성을 텍스트로 변환합니다.
-
-        Args:
-            pcm (list): _description_
-
-        Returns:
-            _type_: _description_
-        """
-
-        with speech_recognition.AudioFile(file_name) as source:
-            return self.speech_recognition.recognize_google(
-                self.speech_recognition.record(source),
-                language='ko-KR',
-            )
-
-    def delete(self):
-        """_summary_
-            Picovoice Leopard 를 종료합니다.
-        """
-        self.pv_leopard.delete()
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)

@@ -1,167 +1,111 @@
-"""_summary_
-
-Returns:
-    _type_: _description_
 """
-import os
-import sys
-import time
-import struct
+    Audio 관련 유틸리티 함수를 정의합니다.
+"""
+from typing import List, Dict, Any
 import pyaudio
-from colorama import Fore
-import pvporcupine
-import pvcobra
 import speech_recognition
+import noisereduce as nr
+import numpy as np
 
-class PilotAudio:
-    """_summary_
-        pyaudio 와 picovoice 를 사용하여 오디오 입력을 처리합니다.
+def list_audio_input_devices(
+    pa: pyaudio.PyAudio
+) -> List[Dict[str, Any]]:
     """
-    pyaudio = pyaudio.PyAudio()
+    사용자가 가지고 있는 오디오 Input 장치의 목록을 반환합니다.
 
-    def __init__(self, picovoice_api_key: str):
-        self.picovoice_api_key = picovoice_api_key
-        self.selected_device = None
+    Args:
+        pyaudio (pyaudio.PyAudio): PyAudio 인스턴스
 
-    def list_audio_devices(self):
-        """_summary_
-        사용자가 가지고 있는 오디오 Input 장치의 목록과 ID를 출력합니다.
+    Returns:
+        List[Dict[str, Any]]: 오디오 장치 목록
+    """
+    result = []
+    info = pa.get_host_api_info_by_index(0)
+    numdevices = info.get('deviceCount')
+    for i in range(0, numdevices):
+        device = pa.get_device_info_by_host_api_device_index(0, i)
+        if (device.get('maxInputChannels')) > 0:
+            result.append(device)
+            print("Input Device id ", i, " - ", device.get('name'))
+    return result
 
-        Args:
-            pyaudio (_type_): _description_
-        """
-        numdevices = self.pyaudio.get_device_count()
-        for i in range(0, numdevices):
-            device = self.pyaudio.get_device_info_by_index(i)
-            if (device.get('maxInputChannels')) > 0:
-                print(
-                    "Input Device id ",
-                    i,
-                    " - ",
-                    device.get('name')
-                )
+def list_audio_output_devices(
+    pa: pyaudio.PyAudio
+) -> List[Dict[str, Any]]:
+    """
+    사용자가 가지고 있는 오디오 Output 장치의 목록을 반환합니다.
 
-    def select_audio_device(self):
-        """_summary_
-        사용자가 가지고 있는 오디오 Input 장치 중 사용할 장치의 ID를 입력받습니다.
+    Args:
+        pyaudio (pyaudio.PyAudio): PyAudio 인스턴스
 
-        Returns:
-            _type_: _description_
-        """
-        device_id = input("Enter the ID of the audio input device you want to use: ")
-        return int(device_id)
+    Returns:
+        List[Dict[str, Any]]: 오디오 장치 목록
+    """
+    result = []
+    info = pa.get_host_api_info_by_index(0)
+    numdevices = info.get('deviceCount')
+    for i in range(0, numdevices):
+        device = pa.get_device_info_by_host_api_device_index(0, i)
+        if (device.get('maxOutputChannels')) > 0:
+            result.append(device)
+            print("Output Device id ", i, " - ", device.get('name'))
+    return result
 
-    def wait_until_wake_word(self, device_index: int):
-        """_summary_
-            wake word 가 감지될 때까지 대기합니다.
-        """
-        keywords = ["jarvis", "jarvis", "americano"]
-        porcupine = pvporcupine.create(
-            keywords = keywords,
-            access_key = self.picovoice_api_key,
-            sensitivities = [1, 1, 1],
-        )
-        devnull = os.open(os.devnull, os.O_WRONLY)
-        old_stderr = os.dup(2)
-        sys.stderr.flush()
-        os.dup2(devnull, 2)
-        os.close(devnull)
+def listen_voice_and_return_text(
+    recognizer: speech_recognition.Recognizer,
+    audio_source: speech_recognition.Microphone,
+    language: str = 'en-US',
+) -> str:
+    """
+    사용자의 음성 텍스트로 반환합니다.
 
-        porcupine_audio_stream = self.pyaudio.open(
-            rate = porcupine.sample_rate,
-            input_device_index = device_index,
-            channels = 1,
-            format = pyaudio.paInt16,
-            input = True,
-            frames_per_buffer = porcupine.frame_length
-        )
+    Args:
+        recognizer (speech_recognition.Recognizer): Recognizer 인스턴스
+        audio_source (speech_recognition.Microphone): Microphone 인스턴스
+    """
+    print("Audio listening...")
+    while True:
+        audio = recognizer.listen(audio_source)
+        raw = audio.get_raw_data()
+        audio_np = np.frombuffer(raw, dtype=np.int16)
+        # 소음 감소 적용
+        reduced_noise_audio = nr.reduce_noise(y=audio_np, sr=audio.sample_rate)
 
-        detected = True
-
-        while detected:
-            porcupine_pcm = porcupine_audio_stream.read(porcupine.frame_length)
-            porcupine_pcm = struct.unpack_from("h" * porcupine.frame_length, porcupine_pcm)
-
-            porcupine_keyword_index = porcupine.process(porcupine_pcm)
-
-            if porcupine_keyword_index >= 0:
-                keyword = keywords[porcupine_keyword_index]
-                print(Fore.GREEN + "\n" + keyword + " detected\n")
-                porcupine_audio_stream.stop_stream()
-                porcupine_audio_stream.close()
-                porcupine.delete()
-                os.dup2(old_stderr, 2)
-                os.close(old_stderr)
-                detected = False
-
-    def listen_for_wake_word2(self, sr):
-        with speech_recognition.Microphone() as source:
-            while True:
-                sr.adjust_for_ambient_noise(source, duration=1)
-                audio = sr.listen(source)
-                try:
-                    text = sr.recognize_google(audio, language='ko-KR')
-                    if "서연" in text.lower():
-                        print("Wake word detected.")
-                        return
-                except speech_recognition.UnknownValueError:
-                    pass
-
-    def wait_until_silence(self):
-        """_summary_
-            조용함이 감지될 때까지 대기합니다.
-        """
-        cobra = pvcobra.create(access_key=self.picovoice_api_key)
-
-        cobra_audio_stream = self.pyaudio.open(
-            rate=cobra.sample_rate,
-            channels=1,
-            format=pyaudio.paInt16,
-            input=True,
-            frames_per_buffer=cobra.frame_length
+        # NumPy 배열을 AudioData 객체로 변환
+        reduced_noise_audio_data = speech_recognition.AudioData(
+            reduced_noise_audio.tobytes(),
+            audio.sample_rate,
+            audio.sample_width
         )
 
-        last_voice_time = time.time()
+        try:
+            text = recognizer.recognize_google(reduced_noise_audio_data, language=language)
+            print("Audio detected: ", text)
+            return text
+        except speech_recognition.UnknownValueError:
+            print("Audio detected: no words were understood")
 
-        while True:
-            cobra_pcm = cobra_audio_stream.read(cobra.frame_length)
-            cobra_pcm = struct.unpack_from("h" * cobra.frame_length, cobra_pcm)
-            if cobra.process(cobra_pcm) > 0.2:
-                last_voice_time = time.time()
-            else:
-                silence_duration = time.time() - last_voice_time
-                if silence_duration > 1.3:
-                    print("End of query detected\n")
-                    cobra_audio_stream.stop_stream()
-                    cobra_audio_stream.close()
-                    cobra.delete()
-                    last_voice_time=None
-                    break
+def listen_for_wake_word(
+    recognizer: speech_recognition.Recognizer,
+    audio_source: speech_recognition.Microphone,
+    wake_words: List[str],
+    language: str = 'en-US',
+) -> None:
+    """
+    wake word 가 감지될 때까지 대기합니다.
 
-    def listen_until_silence(self):
-        """_summary_
-            사용자의 음성을 입력받습니다.
-            조용함이 감지되면 종료됩니다.
-        """
-        cobra = pvcobra.create(access_key = self.picovoice_api_key)
-
-        listen_audio_stream = self.pyaudio.open(
-            rate = cobra.sample_rate,
-            channels = 1,
-            format = pyaudio.paInt16,
-            input = True,
-            frames_per_buffer = cobra.frame_length
+    Args:
+        recognizer (speech_recognition.Recognizer): Recognizer 인스턴스
+        audio_source (speech_recognition.Microphone): Microphone 인스턴스
+        wake_words (List[str]): 감지할 단어 목록
+    """
+    while True:
+        text = listen_voice_and_return_text(
+            recognizer=recognizer,
+            audio_source=audio_source,
+            language=language
         )
-
-        print("Listening...")
-
-        while True:
-            listen_pcm = listen_audio_stream.read(cobra.frame_length)
-            listen_pcm = struct.unpack_from("h" * cobra.frame_length, listen_pcm)
-
-            if cobra.process(listen_pcm) > 0.3:
-                print("Voice detected")
-                listen_audio_stream.stop_stream()
-                listen_audio_stream.close()
-                cobra.delete()
-                break
+        print("You said: ", text)
+        if any(word.lower() in text.lower() for word in wake_words):
+            print("Wake word detected.")
+            break

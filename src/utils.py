@@ -1,9 +1,15 @@
-#!/usr/bin/env python3
 """_summary_
-    콘솔에 출력하기 위한 도구
+    공통 유틸리티 모음
 """
+import os
 import textwrap
 import time
+
+def clear_console():
+    """
+      콘솔의 내용을 모두 제거합니다.
+    """
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def print_slowly(res: str):
     """_summary_

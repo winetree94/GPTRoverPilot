@@ -1,32 +1,31 @@
-"""_summary_
-오디오 장치를 제어하기 위한 도구들을 포함합니다.
-
-Returns:
-    _type_: _description_
+"""
+ChatGPT 를 쉽게 사용하기 위한 OpenAPI 의 추상화 클래스입니다.
 """
 import openai
 
 class ChatGPT:
-    """_summary_
-        ChatGPT 를 쉽게 사용하기 위한 OpenAPI 의 추상화 클래스입니다.
+    """
+    ChatGPT 를 쉽게 사용하기 위한 OpenAPI 의 추상화 클래스입니다.
     """
 
     def __init__(
         self,
         key: str,
-        default_model: str
+        default_model: str,
+        prefix: str,
     ):
         self.key = key
         self.default_model = default_model
         self.client = openai.OpenAI(api_key=key)
+        self.prefix = prefix
         self.clear()
 
     def chat(
         self,
         query: str,
     ):
-        """_summary_
-            ChatGPT 로 대화 내용을 전송합니다.
+        """
+        ChatGPT 로 대화 내용을 전송합니다.
 
         Args:
             model (_type_): _description_
@@ -46,7 +45,6 @@ class ChatGPT:
         answer = response.choices[0].message.content
 
         self.chat_log.append({"role": "assistant", "content": answer})
-        print(self.chat_log)
         return answer
 
     def clear(self):
@@ -57,10 +55,6 @@ class ChatGPT:
             {
                 "role": 
                     "system", 
-                    "content": 
-                        "Your name is 서연. You are a helpful assistant."
-                        "If asked about yourself, you include your name in your response."
-                        "If asked about your purpose, you say you are here to help."
-                        "Please summarize your responses as briefly as possible, as our conversation is conveyed through voice."
+                    "content": self.prefix
             }
         ]
