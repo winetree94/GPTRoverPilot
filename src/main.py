@@ -19,7 +19,7 @@ with open('configuration.json', 'r', encoding='utf-8') as file:
 
 OPENAI_API_KEY: Final[str] = str(env.get('openai_api_key'))
 OPENAI_GPT_MODEL: Final[str] = str(env.get('openai_gpt_model', 'gpt-4'))
-OPENAI_GPT_PREFIX: Final[str] = str(env.get('openai_gpt_prefix', ''))
+OPENAI_GPT_INSTRUCTIONS: Final[str] = str(env.get('openai_gpt_instructions', ''))
 LANGUAGE_CODE: Final[str] = str(env.get('language_code', 'en'))
 COUNTRY_CODE: Final[str] = str(env.get('country_code', 'US'))
 WAKE_WORDS: Final[List[str]] = env.get('wake_words', ['Jarvis'])
@@ -28,7 +28,7 @@ GREETING_MESSAGES: Final[List[str]] = env.get('greeting_messages', ['Hello'])
 pilot_gpt = gpt.ChatGPT(
     key = OPENAI_API_KEY,
     default_model = OPENAI_GPT_MODEL,
-    prefix = OPENAI_GPT_PREFIX,
+    instructions = OPENAI_GPT_INSTRUCTIONS,
 )
 pyaudio = pyaudio.PyAudio()
 recognizer = speech_recognition.Recognizer()
@@ -37,11 +37,6 @@ audio_input_device_id = int(env.get('audio_input_device_id'))
 if audio_input_device_id == -1:
     audio.list_audio_input_devices(pyaudio)
     audio_input_device_id = int(input("Enter the ID of the audio input device you want to use: "))
-
-# audio_output_device_id = int(env.get('audio_output_device_id'))
-# if audio_output_device_id == -1:
-#     audio.list_audio_output_devices(pyaudio)
-#     audio_output_device_id = int(input("Enter the ID of the audio output device you want to use: "))
 
 def listen_wake_word():
     """
@@ -53,8 +48,8 @@ def listen_wake_word():
         wake_words=WAKE_WORDS,
         language=LANGUAGE_CODE + '-' + COUNTRY_CODE
     )
-    tts.parse_and_play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
-    # tts.parse_and_play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
+    greeting_audio = tts.parse(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
+    audio.play(greeting_audio)
     time.sleep(0.5)
     listen_and_response()
 
@@ -79,8 +74,6 @@ def listen_and_response():
         response_text = executor.submit(pilot_gpt.chat, question).result()
         response_voice = executor.submit(tts.parse, response_text, LANGUAGE_CODE).result()
         future_loading_sound.cancel()
-        time.sleep(0.5)
-        audio.play('./assets/found.wav')
         time.sleep(0.5)
         future_print = executor.submit(utils.print_slowly, response_text)
         future_voice = executor.submit(audio.play, response_voice)

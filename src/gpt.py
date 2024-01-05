@@ -12,12 +12,12 @@ class ChatGPT:
         self,
         key: str,
         default_model: str,
-        prefix: str,
+        instructions: str,
     ):
         self.key = key
         self.default_model = default_model
         self.client = openai.OpenAI(api_key=key)
-        self.prefix = prefix
+        self.instructions = instructions
         self.clear()
 
     def chat(
@@ -55,6 +55,6 @@ class ChatGPT:
             {
                 "role": 
                     "system", 
-                    "content": self.prefix
+                    "content": self.instructions
             }
         ]
