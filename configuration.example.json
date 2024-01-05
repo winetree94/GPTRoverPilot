@@ -15,6 +15,6 @@
         "무엇을 도와드릴까요?",
         "도움이 필요하신가요?"
     ],
-    "audio_input_device_id": 7,
-    "audio_output_device_id": 11
+    "audio_input_device_id": -2,
+    "audio_output_device_id": -2 
 }

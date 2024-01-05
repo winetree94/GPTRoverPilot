@@ -37,10 +37,10 @@ if audio_input_device_id == -1:
     audio.list_audio_input_devices(pyaudio)
     audio_input_device_id = int(input("Enter the ID of the audio input device you want to use: "))
 
-audio_output_device_id = int(env.get('audio_output_device_id'))
-if audio_output_device_id == -1:
-    audio.list_audio_output_devices(pyaudio)
-    audio_output_device_id = int(input("Enter the ID of the audio output device you want to use: "))
+# audio_output_device_id = int(env.get('audio_output_device_id'))
+# if audio_output_device_id == -1:
+#     audio.list_audio_output_devices(pyaudio)
+#     audio_output_device_id = int(input("Enter the ID of the audio output device you want to use: "))
 
 def listen_wake_word():
     """
@@ -74,7 +74,7 @@ def listen_and_response():
     listen_wake_word()
 
 with speech_recognition.Microphone(
-    device_index = audio_input_device_id,
+    device_index = None if audio_input_device_id == -2 else audio_input_device_id,
 ) as source:
     tts.play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
     print("ChatGPT Assistant is ready")
