@@ -105,7 +105,6 @@ def listen_for_wake_word(
             audio_source=audio_source,
             language=language
         )
-        print("You said: ", text)
         if any(word.lower() in text.lower() for word in wake_words):
             print("Wake word detected.")
             break
