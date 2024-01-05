@@ -4,6 +4,7 @@
 from typing import List, Dict, Any
 import pyaudio
 import speech_recognition
+import pygame
 import noisereduce as nr
 import numpy as np
 
@@ -108,3 +109,19 @@ def listen_for_wake_word(
         if any(word.lower() in text.lower() for word in wake_words):
             print("Wake word detected.")
             break
+
+def play(
+    path: str,
+) -> None:
+    """
+    음악 파일을 재생합니다.
+
+    Args:
+        path (str): 음악 파일 경로
+    """
+    pygame.mixer.init()
+    pygame.mixer.music.load(path)
+    pygame.mixer.music.play()
+
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)

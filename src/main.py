@@ -3,8 +3,9 @@
     ChatGPT Voice Assistant
 """
 import json
+import time
 from typing import Final, List
-from threading import Thread
+import concurrent.futures
 import pyaudio
 import speech_recognition
 import numpy
@@ -52,7 +53,9 @@ def listen_wake_word():
         wake_words=WAKE_WORDS,
         language=LANGUAGE_CODE + '-' + COUNTRY_CODE
     )
-    tts.play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
+    tts.parse_and_play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
+    # tts.parse_and_play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
+    time.sleep(0.5)
     listen_and_response()
 
 def listen_and_response():
@@ -60,22 +63,34 @@ def listen_and_response():
         음성을 녹음하고 텍스트로 변환하여 ChatGPT 로 전송합니다.
         수신받은 응답은 다시 음성으로 변환하여 출력합니다.
     """
+    audio.play('./assets/in.wav')
     question = audio.listen_voice_and_return_text(
-        recognizer=recognizer,
-        audio_source=source,
-        language=LANGUAGE_CODE + '-' + COUNTRY_CODE
+        recognizer = recognizer,
+        audio_source = source,
+        language = LANGUAGE_CODE + '-' + COUNTRY_CODE
     )
+    audio.play('./assets/out.wav')
     print("You said: ", question)
-    response = pilot_gpt.chat(question)
-    print_thread = Thread(target = utils.print_slowly, args=(response,))
-    print_thread.start()
-    tts.play(response, LANGUAGE_CODE)
-    print_thread.join()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_loading_sound = executor.submit(
+            audio.play,
+            './assets/loading.wav'
+        )
+        response_text = executor.submit(pilot_gpt.chat, question).result()
+        response_voice = executor.submit(tts.parse, response_text, LANGUAGE_CODE).result()
+        future_loading_sound.cancel()
+        time.sleep(0.5)
+        audio.play('./assets/found.wav')
+        time.sleep(0.5)
+        future_print = executor.submit(utils.print_slowly, response_text)
+        future_voice = executor.submit(audio.play, response_voice)
+        future_print.result()
+        future_voice.result()
     listen_wake_word()
 
 with speech_recognition.Microphone(
     device_index = None if audio_input_device_id == -2 else audio_input_device_id,
 ) as source:
-    tts.play(numpy.random.choice(GREETING_MESSAGES), LANGUAGE_CODE)
+    audio.play('./assets/boot.wav')
     print("ChatGPT Assistant is ready")
     listen_wake_word()
